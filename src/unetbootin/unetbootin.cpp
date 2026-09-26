@@ -782,6 +782,49 @@ void unetbootin::on_cancelbutton_clicked()
 	close();
 }
 
+QString unetbootin::targetfilesystem(QString drive)
+{
+	if (drive.isEmpty())
+		return "";
+#ifdef Q_OS_WIN32
+	QString mountpoint = drive;
+#else
+	QString mountpoint = locatemountpoint(drive);
+	if (mountpoint == "NOT MOUNTED")
+		return "";
+#endif
+	QString fstype = QString(QStorageInfo(mountpoint).fileSystemType());
+#ifdef Q_OS_LINUX
+	// NTFS (ntfs-3g) and some exFAT drivers are mounted through FUSE; ask blkid for the real type
+	if (fstype == "fuseblk" && !blkidcommand.isEmpty())
+	{
+		QString blkidtype = callexternapp(blkidcommand, QString("-s TYPE -o value %1").arg(drive)).trimmed();
+		if (!blkidtype.isEmpty())
+			fstype = blkidtype;
+	}
+#endif
+	if (QRegExp("exfat", Qt::CaseInsensitive).exactMatch(fstype))
+		return "exFAT";
+	if (QRegExp("ntfs3?", Qt::CaseInsensitive).exactMatch(fstype))
+		return "NTFS";
+	return fstype;
+}
+
+bool unetbootin::targetfilesystemsupported(QString drive)
+{
+	QString fstype = targetfilesystem(drive);
+	if (fstype.isEmpty()) // unknown; let the installation proceed as before
+		return true;
+	// syslinux installs to FAT; on Linux ext2/3/4 is handled with extlinux
+	if (QRegExp("vfat|fat|fat12|fat16|fat32|msdos", Qt::CaseInsensitive).exactMatch(fstype))
+		return true;
+#ifdef Q_OS_LINUX
+	if (fstype.contains(QRegExp("^ext[234]$", Qt::CaseInsensitive)))
+		return true;
+#endif
+	return false;
+}
+
 void unetbootin::on_okbutton_clicked()
 {
     if (typeselect->currentIndex() == typeselect->findText(tr("USB Drive")) && driveselect->currentText().isEmpty() && !testingDownload)
@@ -821,6 +864,15 @@ void unetbootin::on_okbutton_clicked()
 		}
 	}
 	#endif
+	else if (typeselect->currentIndex() == typeselect->findText(tr("USB Drive")) && !testingDownload && !targetfilesystemsupported(driveselect->currentText()))
+	{
+		QMessageBox unsupportedfsmsgb;
+		unsupportedfsmsgb.setIcon(QMessageBox::Warning);
+		unsupportedfsmsgb.setWindowTitle(tr("Unsupported filesystem"));
+		unsupportedfsmsgb.setText(tr("The drive %1 is formatted as %2, which cannot be made bootable. Back up its files and reformat it as FAT32, then try again.").arg(driveselect->currentText()).arg(targetfilesystem(driveselect->currentText())));
+		unsupportedfsmsgb.setStandardButtons(QMessageBox::Ok);
+		unsupportedfsmsgb.exec();
+	}
 	else if (radioDistro->isChecked() && distroselect->currentIndex() == distroselect->findText(unetbootin::tr("== Select Distribution ==")))
 	{
 		QMessageBox dnotenoughinputmsgb;

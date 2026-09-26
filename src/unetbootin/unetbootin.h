@@ -299,6 +299,8 @@ public:
 	void replaceTextInFile(QString repfilepath, QRegExp replaceme, QString replacewith);
 	QString fixkernelbootoptions(const QString &cfgfileCL);
 	void setLabel(QString devname, QString newlabel);
+	QString targetfilesystem(QString drive);
+	bool targetfilesystemsupported(QString drive);
 	#ifdef Q_OS_UNIX
 	QString locatecommand(QString commandtolocate, QString reqforinstallmode, QString packagename);
 	QString locatedevicenode(QString mountpoint);
