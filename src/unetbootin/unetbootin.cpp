@@ -4080,6 +4080,21 @@ void unetbootin::runinstusb()
 			callexternapp(syslinuxcommand, targetDev);
 		if (rawtargetDev != targetDev)
 		{
+			// GPT drives need syslinux's GPT boot code, which boots the partition marked "legacy BIOS bootable"
+			bool isgpt = false;
+			QFile rawdevF(rawtargetDev);
+			if (rawdevF.open(QIODevice::ReadOnly))
+			{
+				rawdevF.seek(512);
+				isgpt = rawdevF.read(8) == QByteArray("EFI PART");
+				if (!isgpt && rawdevF.seek(4096)) // 4K sectors
+					isgpt = rawdevF.read(8) == QByteArray("EFI PART");
+				rawdevF.close();
+			}
+			if (isgpt && sfdiskcommand != "")
+			{
+				callexternapp(sfdiskcommand, QString("--part-attrs %1 %2 LegacyBIOSBootable").arg(rawtargetDev, QString(targetDev).remove(rawtargetDev).remove("p")));
+			}
 			// make active
 			if (sfdiskcommand != "") {
 				// use sfdisk if available
@@ -4108,11 +4123,12 @@ void unetbootin::runinstusb()
 				}
 			}
 			QFile usbmbrF(rawtargetDev);
-			QFile mbrbinF(":/mbr.bin");
+			QString mbrbinname = isgpt ? "gptmbr.bin" : "mbr.bin";
+			QFile mbrbinF(":/" + mbrbinname);
 			#ifdef NOSTATIC
-			mbrbinF.setFileName(QFile::exists("/usr/share/syslinux/mbr.bin") ? "/usr/share/syslinux/mbr.bin" : "/usr/lib/syslinux/mbr.bin");
-			if (QFile::exists("/usr/lib/syslinux/mbr/mbr.bin"))
-				mbrbinF.setFileName("/usr/lib/syslinux/mbr/mbr.bin");
+			mbrbinF.setFileName(QFile::exists("/usr/share/syslinux/" + mbrbinname) ? "/usr/share/syslinux/" + mbrbinname : "/usr/lib/syslinux/" + mbrbinname);
+			if (QFile::exists("/usr/lib/syslinux/mbr/" + mbrbinname))
+				mbrbinF.setFileName("/usr/lib/syslinux/mbr/" + mbrbinname);
 			#endif
 			usbmbrF.open(QIODevice::WriteOnly);
 			mbrbinF.open(QIODevice::ReadOnly);
