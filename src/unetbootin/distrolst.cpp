@@ -1228,6 +1228,21 @@ if (nameDistro == "Zenwalk")
 	extractiso(isotmpf);
 }
 
+if (nameDistro == "Zorin OS")
+{
+	QString edition = relname.contains("lite") ? "Lite" : "Core";
+	QString major = relname.section('-', 0, 0);
+	downloadfile(fileFilterNetDir(QStringList() <<
+	"http://mirrors.edge.kernel.org/zorinos-isos/"+major+"/" <<
+	"http://ftp.halifax.rwth-aachen.de/zorinos/"+major+"/"
+	, 524288000, 4294967296LL, QList<QRegExp>() <<
+	QRegExp(".iso$", Qt::CaseInsensitive) <<
+	QRegExp("-"+edition+"-64-bit.iso$", Qt::CaseInsensitive) <<
+	QRegExp("^Zorin-OS-[0-9]{1,}\\.[0-9]{1,}-"+edition+"-64-bit.iso$", Qt::CaseInsensitive)
+	), isotmpf);
+	extractiso(isotmpf);
+}
+
 if (nameDistro == "3CX")
 {
     downloadfile(QString("http://unetbootin.sourceforge.net/distros/3CX/pbx_debian_x64.php"), isotmpf);

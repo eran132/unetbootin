@@ -280,6 +280,11 @@ unetbootin::tr("<b>Homepage:</b> <a href=\"https://zenwalkgnulinux.blogspot.com/
 	"<b>Description:</b> Zenwalk is a Slackware-based distribution featuring the XFCE desktop.<br/>"
 	"<b>Install Notes:</b> The Live version allows for booting in Live mode, from which the installer can optionally be launched.") <<
 "5.2"));
+distroselect->addItem("Zorin OS", (QStringList() << "18_Live_x64" <<
+unetbootin::tr("<b>Homepage:</b> <a href=\"https://zorin.com/os/\">https://zorin.com/os</a><br/>"
+	"<b>Description:</b> Zorin OS is an Ubuntu-based distribution designed to be familiar to Windows and macOS users.<br/>"
+	"<b>Install Notes:</b> The Live version allows for booting in Live mode, from which the installer can optionally be launched. The Lite version uses the lighter Xfce desktop.") <<
+"18_Live_x64" << "18-Lite_Live_x64"));
 distroselect->addItem("3CX", (QStringList() << "pbx_debian_x64" <<
 unetbootin::tr("<b>Homepage:</b> <a href=\"https://www.3cx.com/\">https://www.3cx.com</a><br/>"
     "<b>Description:</b> 3CX is a specialist, Debian-based Linux distribution designed to run a complete unified communications platform. It provides a complete open standards-based IP PBX and phone system that works with popular SIP trunks and IP phones. It will automatically configure all supported peripherals and it also comes with clients for Windows, OS X, iOS and Android. The ISO image includes a free license for the 3CX PBX edition.<br/>") <<
