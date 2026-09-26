@@ -1648,6 +1648,16 @@ void unetbootin::extractiso(QString isofile)
 				}
 			}
 		}
+#ifndef NOSTATIC
+		// The bundled syslinux is 4.x, which cannot load modules built for syslinux 5 or later
+		// (those ISOs ship ldlinux.c32), so generate our own config for them instead
+		if (dontgeneratesyslinuxcfg && !filepathnames.filter(QRegExp("ldlinux\\.c32$", Qt::CaseInsensitive)).isEmpty())
+		{
+			dontgeneratesyslinuxcfg = false;
+			newersyslinuxcfgfiles = locatedsyslinuxcfgfiles;
+			locatedsyslinuxcfgfiles.clear();
+		}
+#endif
 	}
 	if (!dontgeneratesyslinuxcfg)
 	{
@@ -1699,6 +1709,13 @@ void unetbootin::extractiso(QString isofile)
     QStringList extractedfiles;
     if (!skipExtraction)
       extractedfiles = extractallfiles(isofile, targetDrive, listfilesizedirpair.first, filepathnames);
+	// syslinux looks in boot/syslinux/ and syslinux/ before the root, so remove the ISO's
+	// syslinux 5+ configs that would otherwise be used instead of the generated one
+	for (int i = 0; i < newersyslinuxcfgfiles.size(); ++i)
+	{
+		if (newersyslinuxcfgfiles.at(i) != "syslinux.cfg")
+			rmFile(QString("%1%2").arg(targetPath).arg(newersyslinuxcfgfiles.at(i)));
+	}
 	QFile ubnfilelF(QDir::toNativeSeparators(QString("%1ubnfilel.txt").arg(targetPath)));
 	if (ubnfilelF.exists())
 	{
