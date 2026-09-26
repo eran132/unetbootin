@@ -216,12 +216,12 @@ if (nameDistro == "AlmaLinux")
 	cpuarch = "x86_64";
 	if (islivecd)
 	{
-		downloadfile(QString("http://repo.almalinux.org/almalinux/%1/live/%2/AlmaLinux-%1-latest-%2-Live-GNOME.iso").arg(relname, cpuarch), isotmpf);
+		downloadfile(QString("https://repo.almalinux.org/almalinux/%1/live/%2/AlmaLinux-%1-latest-%2-Live-GNOME.iso").arg(relname, cpuarch), isotmpf);
 		extractiso(isotmpf);
 	}
 	else
 	{
-		QString repourl = QString("http://repo.almalinux.org/almalinux/%1/BaseOS/%2/os/").arg(relname, cpuarch);
+		QString repourl = QString("https://repo.almalinux.org/almalinux/%1/BaseOS/%2/os/").arg(relname, cpuarch);
 		downloadfile(repourl + "images/pxeboot/vmlinuz", QString("%1ubnkern").arg(targetPath));
 		downloadfile(repourl + "images/pxeboot/initrd.img", QString("%1ubninit").arg(targetPath));
 		kernelOpts = "inst.repo=" + repourl;
@@ -836,12 +836,12 @@ if (nameDistro == "Rocky Linux")
 	cpuarch = "x86_64";
 	if (islivecd)
 	{
-		downloadfile(QString("http://download.rockylinux.org/pub/rocky/%1/live/%2/Rocky-%1-Workstation-%2-latest.iso").arg(relname, cpuarch), isotmpf);
+		downloadfile(QString("https://download.rockylinux.org/pub/rocky/%1/live/%2/Rocky-%1-Workstation-%2-latest.iso").arg(relname, cpuarch), isotmpf);
 		extractiso(isotmpf);
 	}
 	else
 	{
-		QString repourl = QString("http://download.rockylinux.org/pub/rocky/%1/BaseOS/%2/os/").arg(relname, cpuarch);
+		QString repourl = QString("https://download.rockylinux.org/pub/rocky/%1/BaseOS/%2/os/").arg(relname, cpuarch);
 		downloadfile(repourl + "images/pxeboot/vmlinuz", QString("%1ubnkern").arg(targetPath));
 		downloadfile(repourl + "images/pxeboot/initrd.img", QString("%1ubninit").arg(targetPath));
 		kernelOpts = "inst.repo=" + repourl;
