@@ -866,7 +866,7 @@ void unetbootin::on_okbutton_clicked()
 				break;
 		}
 	}
-	else if (radioFloppy->isChecked() && !QFile::exists(FloppyPath->text()) && !FloppyPath->text().startsWith("http://") && !FloppyPath->text().startsWith("ftp://"))
+	else if (radioFloppy->isChecked() && !QFile::exists(FloppyPath->text()) && !FloppyPath->text().contains(QRegExp("^https?://")) && !FloppyPath->text().startsWith("ftp://"))
 	{
 		QMessageBox ffnotexistsmsgb;
 		ffnotexistsmsgb.setIcon(QMessageBox::Information);
@@ -881,7 +881,7 @@ void unetbootin::on_okbutton_clicked()
 				break;
 		}
 	}
-	else if (radioManual->isChecked() && !QFile::exists(KernelPath->text()) && !KernelPath->text().startsWith("http://") && !KernelPath->text().startsWith("ftp://"))
+	else if (radioManual->isChecked() && !QFile::exists(KernelPath->text()) && !KernelPath->text().contains(QRegExp("^https?://")) && !KernelPath->text().startsWith("ftp://"))
 	{
 		QMessageBox kfnotexistsmsgb;
 		kfnotexistsmsgb.setIcon(QMessageBox::Information);
@@ -896,7 +896,7 @@ void unetbootin::on_okbutton_clicked()
 				break;
 		}
 	}
-	else if (radioManual->isChecked() && InitrdPath->text().trimmed() != "" && !QFile::exists(InitrdPath->text())  && !InitrdPath->text().startsWith("http://") && !InitrdPath->text().startsWith("ftp://"))
+	else if (radioManual->isChecked() && InitrdPath->text().trimmed() != "" && !QFile::exists(InitrdPath->text())  && !InitrdPath->text().contains(QRegExp("^https?://")) && !InitrdPath->text().startsWith("ftp://"))
 	{
 		QMessageBox ifnotexistsmsgb;
 		ifnotexistsmsgb.setIcon(QMessageBox::Information);
@@ -2707,16 +2707,18 @@ void unetbootin::downloadfile(QString fileurl, QString targetfile, qint64 minsiz
 	}
 }
 
-QString unetbootin::lookupsha256(QString fileurl)
+QString unetbootin::lookupchecksum(QString fileurl)
 {
-	// look for the checksum published next to the file, in the formats and names used by distributions:
-	// "<hash>  <file>" (sha256sum) and "SHA256 (<file>) = <hash>" (BSD style)
+	// look for the SHA-256 or SHA-512 checksum published next to the file, in the formats and names used by
+	// distributions: "<hash>  <file>" (sha256sum/sha512sum) and "SHA256 (<file>) = <hash>" (BSD style)
 	QString filename = QFileInfo(QUrl(fileurl).path()).fileName();
 	QString dirurl = fileurl.left(fileurl.lastIndexOf('/') + 1);
-	QStringList checksumurls = QStringList() << fileurl + ".sha256" << dirurl + "SHA256SUMS" << dirurl + "sha256sums.txt"
+	QStringList checksumurls = QStringList() << fileurl + ".sha256" << fileurl + ".sha512" << fileurl + ".sha256sum" << fileurl + ".sha512sum"
+		<< dirurl + "SHA256SUMS" << dirurl + "SHA512SUMS" << dirurl + "sha256sums.txt" << dirurl + "sha256sum.txt"
 		<< dirurl + "SHA256SUMS.txt" << dirurl + "SHA256SUM" << dirurl + "CHECKSUM";
-	QRegExp gnuline("^([0-9a-fA-F]{64})\\s+\\*?(\\S+)$");
-	QRegExp bsdline("^SHA256\\s*\\((\\S+)\\)\\s*=\\s*([0-9a-fA-F]{64})$");
+	QRegExp gnuline("^([0-9a-fA-F]{128}|[0-9a-fA-F]{64})\\s+\\*?([^\\s*]\\S*)$");
+	QRegExp bsdline("^SHA(256|512)\\s*\\((\\S+)\\)\\s*=\\s*([0-9a-fA-F]{128}|[0-9a-fA-F]{64})$");
+	bool listedcheckedfiles = false;
 	for (int i = 0; i < checksumurls.size(); ++i)
 	{
 		pdesc1->setText(tr("Looking for the checksum of %1 in <a href=\"%2\">%2</a>").arg(filename).arg(checksumurls.at(i)));
@@ -2726,8 +2728,20 @@ QString unetbootin::lookupsha256(QString fileurl)
 			QString line = lines.at(j).trimmed();
 			if (gnuline.exactMatch(line) && QFileInfo(gnuline.cap(2)).fileName() == filename)
 				return gnuline.cap(1).toLower();
-			if (bsdline.exactMatch(line) && QFileInfo(bsdline.cap(1)).fileName() == filename)
-				return bsdline.cap(2).toLower();
+			if (bsdline.exactMatch(line) && QFileInfo(bsdline.cap(2)).fileName() == filename)
+				return bsdline.cap(3).toLower();
+		}
+		// some distributions prefix the checksum file name (e.g. Fedora-Workstation-43-1.6-x86_64-CHECKSUM)
+		if (i == checksumurls.size() - 1 && !listedcheckedfiles)
+		{
+			listedcheckedfiles = true;
+			QStringList dirfiles = lstHttpDirFiles(dirurl).filter(QRegExp("CHECKSUM$", Qt::CaseInsensitive));
+			for (int k = 0; k < dirfiles.size(); ++k)
+			{
+				QString checksumfile = QFileInfo(dirfiles.at(k)).fileName();
+				if (!checksumurls.contains(dirurl + checksumfile))
+					checksumurls << dirurl + checksumfile;
+			}
 		}
 	}
 	return "";
@@ -2735,25 +2749,26 @@ QString unetbootin::lookupsha256(QString fileurl)
 
 void unetbootin::verifydownload(QString fileurl, QString localfile)
 {
-	QString expectedsha256 = lookupsha256(fileurl);
-	if (expectedsha256.isEmpty())
+	QString expectedhash = lookupchecksum(fileurl);
+	if (expectedhash.isEmpty())
 	{
-		qDebug() << "No published SHA-256 checksum found for" << fileurl << "- not verified";
+		qDebug() << "No published SHA-256/SHA-512 checksum found for" << fileurl << "- not verified";
 		pdesc1->setText("");
 		return;
 	}
+	bool issha512 = expectedhash.size() == 128;
 	QFile downloadedF(localfile);
 	if (!downloadedF.open(QIODevice::ReadOnly))
 		return;
-	pdesc1->setText(tr("<b>Verifying SHA-256 checksum of</b> %1").arg(QFileInfo(QUrl(fileurl).path()).fileName()));
+	pdesc1->setText(tr("<b>Verifying checksum of</b> %1").arg(QFileInfo(QUrl(fileurl).path()).fileName()));
 	tprogress->setMaximum(100);
-	QCryptographicHash sha256(QCryptographicHash::Sha256);
+	QCryptographicHash hasher(issha512 ? QCryptographicHash::Sha512 : QCryptographicHash::Sha256);
 	qint64 totalsize = qMax(downloadedF.size(), Q_INT64_C(1));
 	qint64 hashedsize = 0;
 	while (!downloadedF.atEnd())
 	{
 		QByteArray chunk = downloadedF.read(4194304);
-		sha256.addData(chunk);
+		hasher.addData(chunk);
 		hashedsize += chunk.size();
 		tprogress->setValue(hashedsize * 100 / totalsize);
 		QApplication::processEvents();
@@ -2761,18 +2776,18 @@ void unetbootin::verifydownload(QString fileurl, QString localfile)
 	downloadedF.close();
 	tprogress->setValue(0);
 	pdesc1->setText("");
-	QString actualsha256 = QString(sha256.result().toHex());
-	if (actualsha256 == expectedsha256)
+	QString actualhash = QString(hasher.result().toHex());
+	if (actualhash == expectedhash)
 	{
-		qDebug() << "SHA-256 verified for" << fileurl << actualsha256;
+		qDebug() << "Checksum verified for" << fileurl << actualhash;
 		return;
 	}
-	qDebug() << "SHA-256 mismatch for" << fileurl << "expected" << expectedsha256 << "got" << actualsha256;
+	qDebug() << "Checksum mismatch for" << fileurl << "expected" << expectedhash << "got" << actualhash;
 	progresslayer->setEnabled(false);
 	progresslayer->hide();
 	rebootlayer->setEnabled(true);
 	rebootlayer->show();
-	rebootmsgtext->setText(tr("The downloaded file %1 does not match its published SHA-256 checksum, so it may be corrupted or tampered with. Please try again, or download the ISO file from the website directly and supply it via the diskimage option.").arg(fileurl));
+	rebootmsgtext->setText(tr("The downloaded file %1 does not match its published checksum, so it may be corrupted or tampered with. Please try again, or download the ISO file from the website directly and supply it via the diskimage option.").arg(fileurl));
 	this->downloadFailed = true;
 	if (exitOnCompletion)
 	{
@@ -3590,14 +3605,14 @@ void unetbootin::runinst()
 		if (diskimagetypeselect->currentIndex() == diskimagetypeselect->findText(tr("Floppy")))
 		{
 			instIndvfl("memdisk", QString("%1ubnkern").arg(targetPath));
-			if (!FloppyPath->text().startsWith("http://") && !FloppyPath->text().startsWith("ftp://"))
+			if (!FloppyPath->text().contains(QRegExp("^https?://")) && !FloppyPath->text().startsWith("ftp://"))
 				QFile::copy(FloppyPath->text(), QString("%1ubninit").arg(targetPath));
 			else
 				downloadfile(FloppyPath->text(), QString("%1ubninit").arg(targetPath));
 		}
 		if (diskimagetypeselect->currentIndex() == diskimagetypeselect->findText(tr("ISO")))
 		{
-			if (!FloppyPath->text().startsWith("http://") && !FloppyPath->text().startsWith("ftp://"))
+			if (!FloppyPath->text().contains(QRegExp("^https?://")) && !FloppyPath->text().startsWith("ftp://"))
 				extractiso(FloppyPath->text());
 			else
 			{
@@ -3618,11 +3633,11 @@ void unetbootin::runinst()
 	}
 	else if (radioManual->isChecked())
 	{
-		if (!KernelPath->text().startsWith("http://") && !KernelPath->text().startsWith("ftp://"))
+		if (!KernelPath->text().contains(QRegExp("^https?://")) && !KernelPath->text().startsWith("ftp://"))
 			QFile::copy(KernelPath->text(), QString("%1ubnkern").arg(targetPath));
 		else
 			downloadfile(KernelPath->text(), QString("%1ubnkern").arg(targetPath));
-		if (!InitrdPath->text().startsWith("http://") && !InitrdPath->text().startsWith("ftp://"))
+		if (!InitrdPath->text().contains(QRegExp("^https?://")) && !InitrdPath->text().startsWith("ftp://"))
 			QFile::copy(InitrdPath->text(), QString("%1ubninit").arg(targetPath));
 		else
 			downloadfile(InitrdPath->text(), QString("%1ubninit").arg(targetPath));
