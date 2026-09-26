@@ -184,11 +184,11 @@ unetbootin::tr("<b>Homepage:</b> <a href=\"https://pogostick.net/~pnh/ntpasswd/\
 	"<b>Description:</b> The Offline NT Password and Registry Editor can reset Windows passwords and edit the registry on Windows 2000-Vista.<br/>"
 	"<b>Install Notes:</b> NTPasswd is booted and run in live mode; no installation is required to use it.") <<
 "2008.05.26" << "2011.05.11"));
-	distroselect->addItem("openSUSE", (QStringList() << "11.1" <<
+	distroselect->addItem("openSUSE", (QStringList() << "Tumbleweed_Live_x64" <<
 unetbootin::tr("<b>Homepage:</b> <a href=\"https://www.opensuse.org/\">https://www.opensuse.org</a><br/>"
-	"<b>Description:</b> openSUSE is a user-friendly Novell sponsored distribution.<br/>"
-	"<b>Install Notes:</b> The default version allows for both installation over the internet (FTP), or offline installation using pre-downloaded installation ISO files.") <<
-	"11.1" << "11.1_x64" << "Factory" << "Factory_x64"));
+	"<b>Description:</b> openSUSE is a community distribution sponsored by SUSE. Tumbleweed is a rolling release, Leap a regular release built from SUSE Linux Enterprise sources.<br/>"
+	"<b>Install Notes:</b> The Tumbleweed Live version boots a GNOME desktop from which the installer can optionally be launched. The NetInstall versions boot the installer and download the rest of the system over the internet.") <<
+"Tumbleweed_Live_x64" << "Tumbleweed_NetInstall_x64" << "Leap-16.0_x64" << "Leap-16.0_NetInstall_x64"));
 distroselect->addItem("Ophcrack", (QStringList() << "XP-LiveCD-2.0" <<
 unetbootin::tr("<b>Homepage:</b> <a href=\"http://ophcrack.sourceforge.net/\">http://ophcrack.sourceforge.net</a><br/>"
 	"<b>Description:</b> Ophcrack can crack Windows passwords.<br/>"

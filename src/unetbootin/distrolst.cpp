@@ -757,35 +757,16 @@ if (nameDistro == "NTPasswd")
 
 if (nameDistro == "openSUSE")
 {
-	if (isarch64)
+	if (relname == "tumbleweed")
 	{
-		cpuarch = "x86_64";
+		downloadfile(QString("https://download.opensuse.org/tumbleweed/iso/openSUSE-Tumbleweed-%1-x86_64-Current.iso").arg(isnetinstall ? "NET" : "GNOME-Live"), isotmpf);
 	}
 	else
 	{
-		cpuarch = "i386";
+		QString leapversion = relname.section('-', 1);
+		downloadfile(QString("https://download.opensuse.org/distribution/leap/%1/offline/Leap-%1-%2-installer-x86_64.install.iso").arg(leapversion, isnetinstall ? "online" : "offline"), isotmpf);
 	}
-	if (islivecd)
-	{
-		downloadfile(QString("http://download.opensuse.org/distribution/%1/iso/cd/openSUSE-%1-GM-GNOME-Live-%2.iso").arg(relname, cpuarch), isotmpf);
-		extractiso(isotmpf);
-	}
-	else
-	{
-		if (relname == "factory")
-		{
-			downloadfile(QString("http://download.opensuse.org/factory/repo/oss/boot/%1/loader/linux").arg(cpuarch), QString("%1ubnkern").arg(targetPath));
-			downloadfile(QString("http://download.opensuse.org/factory/repo/oss/boot/%1/loader/initrd").arg(cpuarch), QString("%1ubninit").arg(targetPath));
-			postinstmsg = unetbootin::tr("\n*IMPORTANT* After rebooting, ignore any error messages and select back if prompted for a CD, then go to the main menu, select the 'Start Installation' option, choose 'Network' as the source, choose 'HTTP' as the protocol, enter 'download.opensuse.org' when prompted for a server, and enter '/factory/repo/oss' when asked for the folder.");
-		}
-		else
-		{
-			downloadfile(QString("http://download.opensuse.org/distribution/%1/repo/oss/boot/%2/loader/linux").arg(relname, cpuarch), QString("%1ubnkern").arg(targetPath));
-			downloadfile(QString("http://download.opensuse.org/distribution/%1/repo/oss/boot/%2/loader/initrd").arg(relname, cpuarch), QString("%1ubninit").arg(targetPath));
-			postinstmsg = unetbootin::tr("\n*IMPORTANT* After rebooting, ignore any error messages and select back if prompted for a CD, then go to the main menu, select the 'Start Installation' option, choose 'Network' as the source, choose 'HTTP' as the protocol, enter 'download.opensuse.org' when prompted for a server, and enter '/distribution/%1/repo/oss' when asked for the folder.").arg(relname);
-			}
-		kernelOpts = "splash=silent showopts";
-	}
+	extractiso(isotmpf);
 }
 
 if (nameDistro == "Ophcrack")
