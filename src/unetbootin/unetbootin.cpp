@@ -196,6 +196,7 @@ bool unetbootin::ubninitialize(QList<QPair<QString, QString> > oppairs)
 	ignoreoutofspace = true;
 #endif
 	dontgeneratesyslinuxcfg = false;
+	isdracutlive = false;
 	#ifdef Q_OS_UNIX
 	isext2 = false;
 	#endif
@@ -1650,6 +1651,8 @@ void unetbootin::extractiso(QString isofile)
 			}
 		}
 	}
+	// dracut live images (Fedora, openSUSE KIWI, ...) keep their root filesystem in LiveOS/squashfs.img
+	isdracutlive = filepathnames.contains(QDir::toNativeSeparators("LiveOS/squashfs.img"), Qt::CaseInsensitive);
 	if (!dontgeneratesyslinuxcfg)
 	{
 	kernelOpts = extractcfg(isofile, listfilesizedirpair.first.first);
@@ -3935,8 +3938,15 @@ void unetbootin::setLabel(QString devname, QString newlabel)
 #endif
 }
 
-QString unetbootin::fixkernelbootoptions(const QString &cfgfileCL)
+QString unetbootin::fixkernelbootoptions(const QString &origcfgfileCL)
 {
+	QString cfgfileCL = origcfgfileCL;
+	// dracut live images without a root= option (e.g. openSUSE Leap's installer) have root=live:LABEL=<ISO label>
+	// built into their initrd; a FAT label can't hold that, so name the USB drive explicitly (the kernel command line wins)
+	if (isdracutlive && !cfgfileCL.contains("root=") && !cfgfileCL.trimmed().isEmpty())
+	{
+		cfgfileCL.append(" root=live:CDLABEL=ISO rd.live.image");
+	}
 	if (cfgfileCL.contains("archisolabel=") && (this->devlabel == "" || this->devlabel == "None"))
 	{
 		this->devlabel = this->getlabel(this->targetDev);
@@ -3963,9 +3973,15 @@ QString unetbootin::fixkernelbootoptions(const QString &cfgfileCL)
     QString ncfgfileCL = cfgfileCL;
     if (ncfgfileCL.contains("root=live:CDLABEL"))
     {
+        // keep the CDLABEL form: KIWI (openSUSE) only accepts root=live:CDLABEL=, dmsquash-live (Fedora) accepts it too
+        QString livelabel = this->getlabel(this->targetDev);
+        if (livelabel.isEmpty() || livelabel == "None")
+        {
+            setLabel(this->targetDev, "LIVE");
+            livelabel = "LIVE";
+        }
         ncfgfileCL = QString(ncfgfileCL)
-        .replace(QRegExp("root=\\S{0,}LABEL=\\S{0,}"), QString("root=live:%1").arg(devluid))
-        .replace(QRegExp("root=\\S{0,}CDLABEL=\\S{0,}"), QString("root=live:%1").arg(devluid));
+        .replace(QRegExp("root=\\S{0,}CDLABEL=\\S{0,}"), QString("root=live:CDLABEL=%1").arg(livelabel));
     }
     else
     {
@@ -3978,7 +3994,11 @@ QString unetbootin::fixkernelbootoptions(const QString &cfgfileCL)
     .replace("theme:sabayon", "theme:sabayon cdroot_type=vfat")
 	.replace("pmedia=cd", "pmedia=usbflash")
 	.replace(QRegExp("archisolabel=\\S{0,}"), QString("archisolabel=%1").arg(devlabel))
-	.trimmed();
+	// grub variables (e.g. ${isoboot}) are not expanded by syslinux
+	.remove(QRegExp("\\$\\{\\S{1,}\\}"))
+	// KIWI would try to create a persistent write partition on the drive
+	.remove(QRegExp("rd\\.live\\.overlay\\.(persistent|cowfs=\\S{0,})"))
+	.simplified();
 }
 
 void unetbootin::logText(const QString &text)
