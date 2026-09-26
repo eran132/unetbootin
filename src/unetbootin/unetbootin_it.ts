@@ -372,7 +372,8 @@ Installare il pacchetto &quot;%3&quot; o l&apos;equivalente per la distribuzione
         <location filename="unetbootin.cpp" line="4330"/>
         <source>After rebooting, select the USB boot option in the BIOS boot menu.%1
 Reboot now?</source>
-        <translation>Dopo il riavvio selezionare nel BIOS l&apos;opzione di avvio da USB.%1 Riavviare ora?</translation>
+        <translation>Dopo il riavvio selezionare nel BIOS l&apos;opzione di avvio da USB.%1
+Riavviare ora?</translation>
     </message>
     <message>
         <location filename="unetbootin.cpp" line="4333"/>
