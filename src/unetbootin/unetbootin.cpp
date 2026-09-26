@@ -2630,13 +2630,11 @@ void unetbootin::downloadfile(QString fileurl, QString targetfile, qint64 minsiz
 	pdesc2->setText(tr("<b>Destination:</b> %1").arg(targetfile));
 	pdesc1->setText(tr("<b>Downloaded:</b> 0 bytes"));
 
-	QUrl redirectUrl;
 	bool downloadFailed = false;
 	QNetworkReply::NetworkError errorCode;
 
 	connect(networkReply, &QNetworkReply::finished, &dlewait, &QEventLoop::quit);
 	connect(networkReply, &QNetworkReply::downloadProgress, this, &unetbootin::dlprogressupdate64);
-	connect(networkReply, &QNetworkReply::redirected, [&](const QUrl &url){ redirectUrl = url; });
 	connect(networkReply, static_cast<void (QNetworkReply::*)(QNetworkReply::NetworkError)>(&QNetworkReply::error),
 			[&](QNetworkReply::NetworkError code){ downloadFailed = true; errorCode = code; });
 
@@ -2657,10 +2655,13 @@ void unetbootin::downloadfile(QString fileurl, QString targetfile, qint64 minsiz
 
 	dlewait.exec();
 
+	// Qt 5 does not follow redirects by default, so follow them manually
+	QUrl redirectUrl = networkReply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
 	if (!redirectUrl.isEmpty())
 	{
 		networkReply->deleteLater();
-		downloadfile(redirectUrl.toString(), targetfile, minsize);
+		dloutfile.remove();
+		downloadfile(QUrl(fileurl).resolved(redirectUrl).toString(), targetfile, minsize);
 		return;
 	}
 
@@ -2756,14 +2757,15 @@ QString unetbootin::downloadpagecontents(QUrl pageurl)
 	QNetworkRequest dlurl(pageurl);
 	QNetworkReply * networkReply = manager.get(dlurl);
 	QEventLoop pgwait;
-	QUrl redirectUrl;
 	connect(networkReply, &QNetworkReply::finished, &pgwait, &QEventLoop::quit);
-	connect(networkReply, &QNetworkReply::redirected, [&redirectUrl](const QUrl &url){ redirectUrl = url; });
 
 	pgwait.exec();
 
+	// Qt 5 does not follow redirects by default, so follow them manually
+	QUrl redirectUrl = networkReply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
 	if (!redirectUrl.isEmpty())
 	{
+		redirectUrl = pageurl.resolved(redirectUrl);
 		networkReply->deleteLater();
 		return downloadpagecontents(redirectUrl);
 	}
@@ -2799,26 +2801,13 @@ QStringList unetbootin::lstFtpDirFiles(QString ldfDirStringUrl, qint64 ldfMinSiz
 QStringList unetbootin::lstHttpDirFiles(QString ldfDirStringUrl)
 {
 	QStringList relativefilelinksL;
-	QStringList relativelinksLPreFilter =
-		downloadpagecontents(QUrl(ldfDirStringUrl))
-		.replace(">", ">\n")
-		.replace("<", "\n<")
-		.split("\n");
-	QStringList relativelinksLPart1 =
-		relativelinksLPreFilter
-		.filter(QRegExp("<a href=\"(?!\\?)\\S{1,}\">", Qt::CaseInsensitive))
-		.replaceInStrings(QRegExp("<a href=\"", Qt::CaseInsensitive), "")
-		.replaceInStrings("\">", "");
-	QStringList relativelinksLPart2 =
-		relativelinksLPreFilter
-		.filter(QRegExp("<a href=\'(?!\\?)\\S{1,}\'>", Qt::CaseInsensitive))
-		.replaceInStrings(QRegExp("<a href=\'", Qt::CaseInsensitive), "")
-		.replaceInStrings("\'>", "");
-	QStringList relativelinksL = relativelinksLPart1 << relativelinksLPart2;
-	for (int i = 0; i < relativelinksL.size(); ++i)
+	QString pagecontents = downloadpagecontents(QUrl(ldfDirStringUrl));
+	// match the href of every link, also when the tag has other attributes (e.g. nginx fancyindex adds title=)
+	QRegExp linkexp("<a\\s[^>]*href=[\"']([^\"'?\\s][^\"'\\s]*)[\"']", Qt::CaseInsensitive);
+	for (int pos = 0; (pos = linkexp.indexIn(pagecontents, pos)) != -1; pos += linkexp.matchedLength())
 	{
-		if (!relativelinksL.at(i).endsWith('/'))
-			relativefilelinksL.append(relativelinksL.at(i));
+		if (!linkexp.cap(1).endsWith('/'))
+			relativefilelinksL.append(linkexp.cap(1));
 	}
 	return relativefilelinksL;
 }
