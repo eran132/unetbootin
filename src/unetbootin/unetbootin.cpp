@@ -2727,8 +2727,8 @@ void unetbootin::dlprogressupdate64(qint64 dlbytes, qint64 maxbytes)
 {
 	QTime time = QTime::currentTime();
 	static int oldsec = 0;
-	// refresh the progress bar every second
-	if(oldsec != time.second())
+	// refresh the progress bar every second; the total is unknown (0 or -1) e.g. for redirect responses
+	if(oldsec != time.second() && maxbytes > 0)
 	{
 		oldsec = time.second();
 		tprogress->setValue(10000 * dlbytes / maxbytes);
@@ -2743,7 +2743,7 @@ void unetbootin::cpprogressupdate64(qint64 dlbytes, qint64 maxbytes)
  QTime time = QTime::currentTime();
  static int oldsec = 0;
  // refresh the progress bar every second
- if(oldsec != time.second())
+ if(oldsec != time.second() && maxbytes > 0)
  {
    oldsec = time.second();
 	 tprogress->setValue(10000 * dlbytes / maxbytes);
