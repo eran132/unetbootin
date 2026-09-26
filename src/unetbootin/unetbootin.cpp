@@ -60,11 +60,12 @@ static const QList<QRegExp> ignoredtypesbothRL = QList<QRegExp>()
 << QRegExp(".exe$", Qt::CaseInsensitive)
 << QRegExp(".deb$", Qt::CaseInsensitive)
 << QRegExp(".udeb$", Qt::CaseInsensitive)
-<< QRegExp("system.map", Qt::CaseInsensitive);
+<< QRegExp("system\\S{0,}\\.map", Qt::CaseInsensitive);
 
 static const QList<QRegExp> ignoredtypeskernelRL = QList<QRegExp>()
-<< QRegExp("initrd.gz$", Qt::CaseInsensitive)
-<< QRegExp("initrd.img$", Qt::CaseInsensitive);
+<< QRegExp("initrd", Qt::CaseInsensitive)
+<< QRegExp("initramfs", Qt::CaseInsensitive)
+<< QRegExp(".igz$", Qt::CaseInsensitive);
 
 static const QList<QRegExp> ignoredtypesinitrdRL = QList<QRegExp>()
 << QRegExp("bzImage$", Qt::CaseInsensitive);
@@ -1147,7 +1148,7 @@ QString unetbootin::locatekernel(QString archivefile, QPair<QStringList, QList<q
 //		{
 //			continue;
 //		}
-		if (archivefileconts.second.at(i) > 614400 && archivefileconts.second.at(i) < 20971520) // between 600 KB and 20 MB
+		if (archivefileconts.second.at(i) > 614400 && archivefileconts.second.at(i) < 67108864) // between 600 KB and 64 MB
 		{
 			tnarchivefileconts.append(archivefileconts.first.at(i));
 		}
@@ -2186,7 +2187,8 @@ QPair<QPair<QStringList, QStringList>, QPair<QStringList, QStringList> > unetboo
 			}
 			continue;
 		}
-		if (cfgfileCL.contains(QRegExp("^menuentry\\s{1,}\".{1,}\"", Qt::CaseInsensitive)))
+		QRegExp menuentrytitle("^menuentry\\s{1,}(?:\"([^\"]{1,})\"|'([^']{1,})')", Qt::CaseInsensitive);
+		if (menuentrytitle.indexIn(cfgfileCL) != -1)
 		{
 			if (kernelpassed)
 			{
@@ -2197,7 +2199,7 @@ QPair<QPair<QStringList, QStringList>, QPair<QStringList, QStringList> > unetboo
 				titleandparams.second.append("");
 				kernelpassed = false;
 			}
-			titleandparams.first[curindex] = QString(cfgfileCL).remove("menuentry", Qt::CaseInsensitive).remove("\"").remove("{").remove("}").trimmed();
+			titleandparams.first[curindex] = (menuentrytitle.cap(1) + menuentrytitle.cap(2)).trimmed();
 			continue;
 		}
 		if (cfgfileCL.contains(QRegExp("^initrd\\s{1,}\\S{1,}", Qt::CaseInsensitive)))
