@@ -2274,7 +2274,7 @@ QString unetbootin::getcfgkernargs(QString cfgfile, QString archivefile, QString
 		if (cfgfileCL.contains(QRegExp("^label\\s", Qt::CaseInsensitive)))
 			modulelabel = false;
 		// the APPEND of a COM32 module entry (e.g. whichsys.c32) holds module arguments, not kernel options
-		if (cfgfileCL.contains(QRegExp("^(com32\\s|kernel\\s{1,}\\S{1,}\\.c32$)", Qt::CaseInsensitive)))
+		if (cfgfileCL.contains(QRegExp("^(com32\\s|(kernel|linux)\\s{1,}\\S{1,}\\.c32$)", Qt::CaseInsensitive)))
 			modulelabel = true;
 		// PXE configs never apply when booting from a USB drive
 		if (!archivefileconts.isEmpty() && QRegExp("^(include|config)\\s{1,}\\S{1,}.cfg$", Qt::CaseInsensitive).exactMatch(cfgfileCL) && !cfgfileCL.contains("pxe", Qt::CaseInsensitive))
@@ -2338,7 +2338,7 @@ QPair<QPair<QStringList, QStringList>, QPair<QStringList, QStringList> > unetboo
 		if (cfgfileCL.contains(QRegExp("^label\\s", Qt::CaseInsensitive)))
 			modulelabel = false;
 		// COM32 module entries (e.g. whichsys.c32) are not kernels; skip them and their APPEND
-		if (cfgfileCL.contains(QRegExp("^(com32\\s|kernel\\s{1,}\\S{1,}\\.c32$)", Qt::CaseInsensitive)))
+		if (cfgfileCL.contains(QRegExp("^(com32\\s|(kernel|linux)\\s{1,}\\S{1,}\\.c32$)", Qt::CaseInsensitive)))
 		{
 			modulelabel = true;
 			continue;
