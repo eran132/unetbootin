@@ -782,6 +782,30 @@ void unetbootin::on_cancelbutton_clicked()
 	close();
 }
 
+bool unetbootin::fileisondrive(QString filepath, QString drive)
+{
+	if (filepath.isEmpty() || drive.isEmpty() || filepath.startsWith("http://") || filepath.startsWith("ftp://") || !QFile::exists(filepath))
+		return false;
+#ifdef Q_OS_WIN32
+	QString mountpoint = drive;
+#else
+	QString mountpoint = locatemountpoint(drive);
+	if (mountpoint == "NOT MOUNTED")
+		return false;
+#endif
+	QString mountdir = QDir::cleanPath(QDir::fromNativeSeparators(mountpoint));
+	if (mountdir == "/" || mountdir.isEmpty())
+		return false;
+	if (!mountdir.endsWith('/'))
+		mountdir.append('/');
+	QString filelocation = QFileInfo(filepath).canonicalFilePath();
+#ifdef Q_OS_WIN32
+	return filelocation.startsWith(mountdir, Qt::CaseInsensitive);
+#else
+	return filelocation.startsWith(mountdir);
+#endif
+}
+
 void unetbootin::on_okbutton_clicked()
 {
     if (typeselect->currentIndex() == typeselect->findText(tr("USB Drive")) && driveselect->currentText().isEmpty() && !testingDownload)
@@ -880,6 +904,15 @@ void unetbootin::on_okbutton_clicked()
 			default:
 				break;
 		}
+	}
+	else if (radioFloppy->isChecked() && typeselect->currentIndex() == typeselect->findText(tr("USB Drive")) && fileisondrive(FloppyPath->text(), driveselect->currentText()))
+	{
+		QMessageBox ffontargetmsgb;
+		ffontargetmsgb.setIcon(QMessageBox::Warning);
+		ffontargetmsgb.setWindowTitle(tr("Diskimage file is on the target drive"));
+		ffontargetmsgb.setText(tr("The diskimage file %1 is stored on %2, the drive you selected to install to. Copy the diskimage file to another drive, or select a different target drive.").arg(FloppyPath->text()).arg(driveselect->currentText()));
+		ffontargetmsgb.setStandardButtons(QMessageBox::Ok);
+		ffontargetmsgb.exec();
 	}
 	else if (radioManual->isChecked() && !QFile::exists(KernelPath->text()) && !KernelPath->text().startsWith("http://") && !KernelPath->text().startsWith("ftp://"))
 	{
