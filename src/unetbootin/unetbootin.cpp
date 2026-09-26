@@ -185,6 +185,7 @@ bool unetbootin::ubninitialize(QList<QPair<QString, QString> > oppairs)
 	searchsymlinks = false;
 	ignoreoutofspace = false;
 	downloadFailed = false;
+	installFailed = false;
 	exitOnCompletion = false;
 	testingDownload = false;
 	issalt = false;
@@ -1568,6 +1569,18 @@ void unetbootin::extractiso(QString isofile)
 			}
 		}
 	}
+	// FAT32 cannot store files of 4 GiB or more; stop before writing anything
+	if (installType == tr("USB Drive") && QString(QStorageInfo(targetPath).fileSystemType()).contains(QRegExp("fat|msdos", Qt::CaseInsensitive)))
+	{
+		for (int i = 0; i < listfilesizedirpair.first.first.size() && i < listfilesizedirpair.first.second.size(); ++i)
+		{
+			if (listfilesizedirpair.first.second.at(i) > Q_UINT64_C(4294967295))
+			{
+				showInstallFailedScreen(tr("%1 contains the file %2 (%3), which is larger than the 4 GB limit of FAT32 drives, so it cannot be installed to %4. Write the image directly to the drive instead.").arg(QFileInfo(isofile).fileName()).arg(listfilesizedirpair.first.first.at(i)).arg(displayfisize(listfilesizedirpair.first.second.at(i))).arg(targetDev));
+				return;
+			}
+		}
+	}
 	QStringList filepathnames = listfilesizedirpair.first.first;
 	QStringList directorypathnames;
 	if (listfilesizedirpair.second.size() > 0)
@@ -2720,6 +2733,23 @@ void unetbootin::showDownloadFailedScreen(const QString &fileurl)
 	}
 }
 
+void unetbootin::showInstallFailedScreen(const QString &message)
+{
+	progresslayer->setEnabled(false);
+	progresslayer->hide();
+	rebootlayer->setEnabled(true);
+	rebootlayer->show();
+	rebootmsgtext->setText(message);
+	this->installFailed = true;
+	if (exitOnCompletion)
+	{
+		QTextStream out(stdout);
+		out << "exitstatus:installfailed" << endl << flush;
+		QApplication::exit();
+		exit(0);
+	}
+}
+
 void unetbootin::dlprogressupdate64(qint64 dlbytes, qint64 maxbytes)
 {
 	QTime time = QTime::currentTime();
@@ -3593,6 +3623,10 @@ void unetbootin::runinst()
 		{
 			return;
 		}
+	}
+	if (installFailed)
+	{
+		return;
 	}
 	if (!sdesc1->text().contains(trdone))
 	{

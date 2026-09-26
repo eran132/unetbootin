@@ -197,6 +197,7 @@ public:
 	bool ignoreoutofspace;
 	bool dontgeneratesyslinuxcfg;
 	bool downloadFailed;
+	bool installFailed;
 	bool exitOnCompletion;
 	bool testingDownload;
 	bool issalt;
@@ -333,6 +334,7 @@ public:
 	void mvFile(const QString &fn, const QString &outfn);
 	void mvFile(QFile &fn, QFile &outfn);
 	void showDownloadFailedScreen(const QString &fileurl);
+	void showInstallFailedScreen(const QString &message);
 
 private slots:
 	void on_distroselect_currentIndexChanged(int distroselectIndex);
