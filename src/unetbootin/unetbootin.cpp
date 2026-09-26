@@ -2701,6 +2701,86 @@ void unetbootin::downloadfile(QString fileurl, QString targetfile, qint64 minsiz
 		QApplication::exit();
 		exit(0);
 	}
+	if (targetfile.endsWith(".iso", Qt::CaseInsensitive))
+	{
+		verifydownload(fileurl, targetfile);
+	}
+}
+
+QString unetbootin::lookupsha256(QString fileurl)
+{
+	// look for the checksum published next to the file, in the formats and names used by distributions:
+	// "<hash>  <file>" (sha256sum) and "SHA256 (<file>) = <hash>" (BSD style)
+	QString filename = QFileInfo(QUrl(fileurl).path()).fileName();
+	QString dirurl = fileurl.left(fileurl.lastIndexOf('/') + 1);
+	QStringList checksumurls = QStringList() << fileurl + ".sha256" << dirurl + "SHA256SUMS" << dirurl + "sha256sums.txt"
+		<< dirurl + "SHA256SUMS.txt" << dirurl + "SHA256SUM" << dirurl + "CHECKSUM";
+	QRegExp gnuline("^([0-9a-fA-F]{64})\\s+\\*?(\\S+)$");
+	QRegExp bsdline("^SHA256\\s*\\((\\S+)\\)\\s*=\\s*([0-9a-fA-F]{64})$");
+	for (int i = 0; i < checksumurls.size(); ++i)
+	{
+		pdesc1->setText(tr("Looking for the checksum of %1 in <a href=\"%2\">%2</a>").arg(filename).arg(checksumurls.at(i)));
+		QStringList lines = downloadpagecontents(QUrl(checksumurls.at(i))).split('\n');
+		for (int j = 0; j < lines.size(); ++j)
+		{
+			QString line = lines.at(j).trimmed();
+			if (gnuline.exactMatch(line) && QFileInfo(gnuline.cap(2)).fileName() == filename)
+				return gnuline.cap(1).toLower();
+			if (bsdline.exactMatch(line) && QFileInfo(bsdline.cap(1)).fileName() == filename)
+				return bsdline.cap(2).toLower();
+		}
+	}
+	return "";
+}
+
+void unetbootin::verifydownload(QString fileurl, QString localfile)
+{
+	QString expectedsha256 = lookupsha256(fileurl);
+	if (expectedsha256.isEmpty())
+	{
+		qDebug() << "No published SHA-256 checksum found for" << fileurl << "- not verified";
+		pdesc1->setText("");
+		return;
+	}
+	QFile downloadedF(localfile);
+	if (!downloadedF.open(QIODevice::ReadOnly))
+		return;
+	pdesc1->setText(tr("<b>Verifying SHA-256 checksum of</b> %1").arg(QFileInfo(QUrl(fileurl).path()).fileName()));
+	tprogress->setMaximum(100);
+	QCryptographicHash sha256(QCryptographicHash::Sha256);
+	qint64 totalsize = qMax(downloadedF.size(), Q_INT64_C(1));
+	qint64 hashedsize = 0;
+	while (!downloadedF.atEnd())
+	{
+		QByteArray chunk = downloadedF.read(4194304);
+		sha256.addData(chunk);
+		hashedsize += chunk.size();
+		tprogress->setValue(hashedsize * 100 / totalsize);
+		QApplication::processEvents();
+	}
+	downloadedF.close();
+	tprogress->setValue(0);
+	pdesc1->setText("");
+	QString actualsha256 = QString(sha256.result().toHex());
+	if (actualsha256 == expectedsha256)
+	{
+		qDebug() << "SHA-256 verified for" << fileurl << actualsha256;
+		return;
+	}
+	qDebug() << "SHA-256 mismatch for" << fileurl << "expected" << expectedsha256 << "got" << actualsha256;
+	progresslayer->setEnabled(false);
+	progresslayer->hide();
+	rebootlayer->setEnabled(true);
+	rebootlayer->show();
+	rebootmsgtext->setText(tr("The downloaded file %1 does not match its published SHA-256 checksum, so it may be corrupted or tampered with. Please try again, or download the ISO file from the website directly and supply it via the diskimage option.").arg(fileurl));
+	this->downloadFailed = true;
+	if (exitOnCompletion)
+	{
+		QTextStream out(stdout);
+		out << "exitstatus:checksumfailed" << endl << flush;
+		QApplication::exit();
+		exit(0);
+	}
 }
 
 void unetbootin::showDownloadFailedScreen(const QString &fileurl)
@@ -3522,6 +3602,8 @@ void unetbootin::runinst()
 			else
 			{
 				downloadfile(FloppyPath->text(), isotmpf);
+				if (downloadFailed)
+					return;
 				extractiso(isotmpf);
 			}
 			if (QFile::exists(QString("%1sevnz.exe").arg(ubntmpf)))
