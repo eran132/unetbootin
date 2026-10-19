@@ -718,6 +718,20 @@ if (nameDistro == "MEPIS")
 	extractiso(isotmpf);
 }
 
+if (nameDistro == "MX Linux")
+{
+	QString edition = relname.contains("kde") ? "KDE" : (relname.contains("fluxbox") ? "Fluxbox" : "Xfce");
+	downloadfile(fileFilterNetDir(QStringList() <<
+	"http://mirror.freedif.org/MXLinux/isos/MX/Final/"+edition+"/" <<
+	"http://mirrors.tuna.tsinghua.edu.cn/mxlinux-isos/MX/Final/"+edition+"/"
+	, 524288000, 4294967296LL, QList<QRegExp>() <<
+	QRegExp(".iso$", Qt::CaseInsensitive) <<
+	QRegExp("^MX-\\S{1,}_x64.iso$", Qt::CaseInsensitive) <<
+	QRegExp("^MX-[0-9.]{1,}_"+edition+"_x64.iso$", Qt::CaseInsensitive)
+	), isotmpf);
+	extractiso(isotmpf);
+}
+
 if (nameDistro == "NetbootCD")
 {
 	downloadfile("http://download.tuxfamily.org/netbootcd/NetbootCD-current.iso", isotmpf);

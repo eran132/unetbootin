@@ -164,6 +164,11 @@ distroselect->addItem("MEPIS", (QStringList() << "SimplyMEPIS" <<
 unetbootin::tr("<b>Description:</b> MEPIS is a Debian-based distribution. SimplyMEPIS is a user-friendly version based on KDE, while AntiX is a lightweight version for older computers.<br/>"
 	"<b>Install Notes:</b> MEPIS supports booting in Live mode, from which the installer can optionally be launched.") <<
 	"SimplyMEPIS" << "SimplyMEPIS_x64" << "AntiX"));
+distroselect->addItem("MX Linux", (QStringList() << "Latest_Live_x64" <<
+unetbootin::tr("<b>Homepage:</b> <a href=\"https://mxlinux.org/\">https://mxlinux.org</a><br/>"
+	"<b>Description:</b> MX Linux is a midweight Debian-based distribution built with antiX, with Xfce as its flagship desktop.<br/>"
+	"<b>Install Notes:</b> The Live version allows for booting in Live mode, from which the installer can optionally be launched.") <<
+"Latest_Live_x64" << "Latest-KDE_Live_x64" << "Latest-Fluxbox_Live_x64"));
 distroselect->addItem("NetbootCD", (QStringList() << "Latest" <<
 unetbootin::tr("<b>Homepage:</b> <a href=\"https://netbootcd.us/\">https://netbootcd.us/</a><br/>"
 	"<b>Description:</b> NetbootCD is a small boot CD that downloads and boots network-based installers for other distributions.<br/>"
