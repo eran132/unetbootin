@@ -1,0 +1,92 @@
+name: Test build (AppImage)
+
+# Unofficial test builds of the "testing" branch, which combines open pull requests,
+# so that people affected by the issues they fix can try them before they are merged.
+on:
+  push:
+    branches: [testing]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential cmake qtbase5-dev qttools5-dev qttools5-dev-tools libfuse2 file
+
+      - name: Build
+        working-directory: src/unetbootin
+        run: |
+          mkdir _b && cd _b
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j"$(nproc)"
+
+      - name: Package AppImage
+        env:
+          LINUXDEPLOY_TAG: 1-alpha-20251107-1
+          PLUGIN_QT_TAG: 1-alpha-20250213-1
+        run: |
+          curl -sSfL -o linuxdeploy "https://github.com/linuxdeploy/linuxdeploy/releases/download/${LINUXDEPLOY_TAG}/linuxdeploy-x86_64.AppImage"
+          curl -sSfL -o linuxdeploy-plugin-qt "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/${PLUGIN_QT_TAG}/linuxdeploy-plugin-qt-x86_64.AppImage"
+          chmod +x linuxdeploy linuxdeploy-plugin-qt
+          sha256sum linuxdeploy linuxdeploy-plugin-qt
+          cat > unetbootin.desktop <<'EOF'
+          [Desktop Entry]
+          Name=UNetbootin
+          Comment=Tool for creating Live USB drives
+          Categories=System;Utility;
+          Exec=unetbootin
+          Icon=unetbootin
+          Terminal=false
+          Type=Application
+          EOF
+          cp src/unetbootin/unetbootin_256.png unetbootin.png
+          SHORT=$(git rev-parse --short HEAD)
+          export OUTPUT="UNetbootin-testing-${SHORT}-x86_64.AppImage"
+          ./linuxdeploy --appdir AppDir -e src/unetbootin/_b/unetbootin -d unetbootin.desktop -i unetbootin.png --plugin qt --output appimage
+          sha256sum "$OUTPUT" > "$OUTPUT.sha256"
+          cat "$OUTPUT.sha256"
+          echo "APPIMAGE=$OUTPUT" >> "$GITHUB_ENV"
+
+      - name: Smoke test
+        run: |
+          ./"$APPIMAGE" --appimage-extract >/dev/null
+          QT_QPA_PLATFORM=offscreen squashfs-root/AppRun rootcheck=n action=listdistros | tee distros.txt
+          grep -qx "Ubuntu" distros.txt && grep -qx "MX Linux" distros.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: |
+            ${{ env.APPIMAGE }}
+            ${{ env.APPIMAGE }}.sha256
+
+      - name: Publish pre-release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="testing-$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)"
+          cat > notes.md <<EOF
+          **Unofficial test build. Not an official UNetbootin release.**
+
+          Built by GitHub Actions from commit ${GITHUB_SHA} of the \`testing\` branch of this fork, which combines open pull requests to unetbootin/unetbootin so they can be tried before they are merged:
+          unetbootin/unetbootin#394, unetbootin/unetbootin#395, unetbootin/unetbootin#397 and unetbootin/unetbootin#398, plus the held fixes for unetbootin/unetbootin#368 (ISO on the target drive), FAT32 4 GB and filesystem checks, GPT legacy boot, SHA-256/SHA-512 verification of downloads, and MX Linux.
+
+          Linux x86_64 only. Requirements: \`p7zip-full\` (or \`7zip\`) and \`mtools\`. UNetbootin must run as root to write to a drive:
+
+          \`\`\`
+          chmod +x ${APPIMAGE}
+          sudo -E ./${APPIMAGE} --appimage-extract-and-run
+          \`\`\`
+
+          SHA-256: \`$(cut -d' ' -f1 "$APPIMAGE.sha256")\`
+          EOF
+          gh release create "$TAG" "$APPIMAGE" "$APPIMAGE.sha256" --prerelease --target "$GITHUB_SHA" --title "Test build $TAG (unofficial)" --notes-file notes.md
