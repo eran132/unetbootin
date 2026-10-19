@@ -32,6 +32,8 @@ jobs:
         env:
           LINUXDEPLOY_TAG: 1-alpha-20251107-1
           PLUGIN_QT_TAG: 1-alpha-20250213-1
+          # also bundle the offscreen platform, for headless use (testingdownload=y, action=listdistros)
+          EXTRA_PLATFORM_PLUGINS: libqoffscreen.so
         run: |
           curl -sSfL -o linuxdeploy "https://github.com/linuxdeploy/linuxdeploy/releases/download/${LINUXDEPLOY_TAG}/linuxdeploy-x86_64.AppImage"
           curl -sSfL -o linuxdeploy-plugin-qt "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/${PLUGIN_QT_TAG}/linuxdeploy-plugin-qt-x86_64.AppImage"
