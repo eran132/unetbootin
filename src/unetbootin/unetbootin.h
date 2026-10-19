@@ -303,6 +303,8 @@ public:
 	QString fixkernelbootoptions(const QString &cfgfileCL);
 	void setLabel(QString devname, QString newlabel);
 	bool fileisondrive(QString filepath, QString drive);
+	QString targetfilesystem(QString drive);
+	bool targetfilesystemsupported(QString drive);
 	#ifdef Q_OS_UNIX
 	QString locatecommand(QString commandtolocate, QString reqforinstallmode, QString packagename);
 	QString locatedevicenode(QString mountpoint);
