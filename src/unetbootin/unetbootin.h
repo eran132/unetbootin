@@ -278,6 +278,8 @@ public:
 	QPair<QPair<QStringList, QStringList>, QPair<QStringList, QStringList> > searchforgrub2includesfileL(QString includesfile, QString archivefile, QStringList archivefileconts, QStringList visitedincludes);
 	void downloadfile(QString fileurl, QString targetfile, qint64 minsize);
 	QString downloadpagecontents(QUrl pageurl);
+	QString lookupchecksum(QString fileurl);
+	void verifydownload(QString fileurl, QString localfile);
 	QStringList lstFtpDirFiles(QString ldfDirStringUrl, qint64 ldfMinSize, qint64 ldfMaxSize);
 	QStringList lstHttpDirFiles(QString ldfDirStringUrl);
 	QStringList lstNetDirFiles(QString ldfDirStringUrl, qint64 ldfMinSize, qint64 ldfMaxSize);
