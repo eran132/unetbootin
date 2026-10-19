@@ -207,6 +207,7 @@ public:
 	int persistenceSpaceMB;
 	QString extraBootOptions;
 	QStringList locatedsyslinuxcfgfiles;
+	QStringList newersyslinuxcfgfiles;
 	QString targetDrive;
 	QString targetPath;
 	QString installType;
