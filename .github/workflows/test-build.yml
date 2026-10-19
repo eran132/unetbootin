@@ -59,8 +59,10 @@ jobs:
 
       - name: Smoke test
         run: |
+          # unetbootin shows a (modal) dialog at startup if one of its helper tools is missing
+          sudo apt-get install -y -qq p7zip-full mtools e2fsprogs fdisk
           ./"$APPIMAGE" --appimage-extract >/dev/null
-          QT_QPA_PLATFORM=offscreen squashfs-root/AppRun rootcheck=n action=listdistros | tee distros.txt
+          QT_QPA_PLATFORM=offscreen timeout 60 squashfs-root/AppRun rootcheck=n action=listdistros | tee distros.txt
           grep -qx "Ubuntu" distros.txt && grep -qx "MX Linux" distros.txt
 
       - uses: actions/upload-artifact@v4
